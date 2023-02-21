@@ -18,3 +18,7 @@ number2 = int(input("input num 2 : "))
 operation = input("input operation : ")
 
 print(my_function(number1, number2, operation))
+
+numList = list(map(int, input().split()))
+evenList = [i for i in numList if i % 2 == 0]
+print(evenList)
