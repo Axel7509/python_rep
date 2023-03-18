@@ -1,6 +1,7 @@
 
 import re
 from utils.constants import PUNCT_MARKS, TERM_MARKS
+import utils.helpers as help
 
 
 def remove_punctuation(text: str) -> str:
@@ -26,8 +27,5 @@ def count_characters(text: str) -> int:
     words = get_words(text)
 
     return sum(len(word) for word in words)
-
-
-
 
 
