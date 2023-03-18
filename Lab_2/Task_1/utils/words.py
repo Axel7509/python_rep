@@ -1,14 +1,12 @@
 
-from utils.helpers import remove_punctuation
+
+from utils.helpers import get_words
+from utils.helpers import count_characters
 
 
-def is_word(word: str) -> bool:
+def average_word_length(text: str) -> float:
 
-    return word.isalnum() and not word.isdigit()
+    words = get_words(text)
+    characters = count_characters(text)
 
-
-def average_word_length(text: str) -> int:
-
-    words = list(filter(is_word, remove_punctuation(text).split()))
-
-    return int(sum((map(len, words))) / len(words))
+    return characters / len(words)

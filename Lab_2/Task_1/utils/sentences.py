@@ -1,5 +1,5 @@
 from utils.helpers import remove_punctuation
-from utils.words import is_word
+from utils.helpers import is_word
 from utils.constants import TERM_MARKS, PUNCT_MARKS
 
 
