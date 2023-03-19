@@ -10,13 +10,19 @@ def average_word_length(text: str) -> float:
     words = get_words(text)
     characters = count_characters(text)
 
-    return characters / len(words)
+    try:
+        return characters / len(words)
+    except ZeroDivisionError:
+        return 0
 
 
 def average_sentence_length(text: str) -> float:
     """Counts average sentence-length in the text"""
 
-    return len(get_words(text)) / count_sentences(text)
+    try:
+        return count_characters(text) / count_sentences(text)
+    except ZeroDivisionError:
+        return 0
 
 
 def top_k_n_grams(text: str, n: int = 4, k: int = 10) -> list[str]:
