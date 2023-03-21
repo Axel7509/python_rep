@@ -13,3 +13,5 @@ CLI_INFO: dict[str, str] = {
     "switch": "– switches to another user.",
 
 }
+
+INFO_MSG: str = "\n".join([f"{comm} {CLI_INFO[comm]}" for comm in CLI_INFO.keys()])
