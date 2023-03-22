@@ -1,6 +1,7 @@
 from utils.user import User
 from utils import messages
 import sys
+from typing import NoReturn
 
 
 class Console:
@@ -47,7 +48,7 @@ class Console:
         else:
             self.commands[command](args) if args else self.commands[command]()
 
-    def start_session(self):
+    def start_session(self) -> NoReturn:
         print(messages.WELCOME_MESSAGE)
         print(messages.INFO_MSG)
         while True:
@@ -56,7 +57,7 @@ class Console:
             except KeyboardInterrupt:
                 self.stop_session()
 
-    def stop_session(self):
+    def stop_session(self) -> NoReturn:
         """Makes necessary preparations before stopping a session."""
 
         try:

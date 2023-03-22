@@ -61,12 +61,20 @@ class Storage:
         with open(path, 'wb+') as save_file:
             pickle.dump(self.data, save_file)
 
-    def load(self, source: str) -> NoReturn:
-        """Loads data to storage from container with the given path."""
+    def load(self, source: str, switch=False) -> NoReturn:
+
         path: str = self.pathify(f"{source}.pkl")
 
         if not self.__verify_path(path):
+            if switch:
+                self.data = set()
             return
+
         with open(path, 'rb') as load_file:
-            self.data = pickle.load(load_file)
+            try:
+                new_data: set = pickle.load(load_file)
+            except pickle.UnpicklingError:
+                new_data = set()
+
+        self.data = (self.data | new_data) if not switch else new_data
 
