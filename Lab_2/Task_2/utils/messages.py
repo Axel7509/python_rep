@@ -15,3 +15,8 @@ CLI_INFO: dict[str, str] = {
 }
 
 INFO_MSG: str = "\n".join([f"{comm} {CLI_INFO[comm]}" for comm in CLI_INFO.keys()])
+
+END_MESSAGE: str = "\nGoodbye"
+SAVE_QUESTION: str = "\nWould you like to save your storage? [y/n]: "
+LOAD_QUESTION: str = "Would you like to load storage for user {}? [y/n]: "
+INVALID_RESPONSE: str = "Invalid response. Aborting..."

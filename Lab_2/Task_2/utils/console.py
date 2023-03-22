@@ -1,5 +1,6 @@
 from utils.user import User
 from utils import messages
+import sys
 
 
 class Console:
@@ -13,14 +14,15 @@ class Console:
             "grep": self.__user.grep_keys,
             "save": self.__user.save_data,
             "load": self.__user.load_data,
+            "switch": self.__user.switch,
         }
 
     @property
-    def user(self):
+    def user(self) -> User:
         return self.__user
 
     @user.setter
-    def user(self, new_username):
+    def user(self, new_username: str):
         self.user = User(new_username)
 
     @property
@@ -28,11 +30,16 @@ class Console:
         return self.__commands
 
     @staticmethod
-    def parse_cmd():
-        raw_command = input().split(maxsplit=1)
+    def parse_cmd() -> tuple[str, tuple[str]]:
+        raw_input = input().split(maxsplit=1)
 
-        return raw_command[0], \
-            (raw_command[-1], tuple(raw_command[-1].split()))[' ' in raw_command[-1]] if len(raw_command) > 1 else ''
+        try:
+            return (
+                raw_input[0],
+                ('', raw_input[-1].split())[len(raw_input) > 1]
+            )
+        except IndexError:
+            return '', tuple('')
 
     def run(self, command, args):
         if command not in self.commands:
@@ -44,5 +51,23 @@ class Console:
         print(messages.WELCOME_MESSAGE)
         print(messages.INFO_MSG)
         while True:
-            command, args = self.parse_cmd()
-            self.run(command, args)
+            try:
+                self.run(*self.parse_cmd())
+            except KeyboardInterrupt:
+                self.stop_session()
+
+    def stop_session(self):
+        """Makes necessary preparations before stopping a session."""
+
+        try:
+            ans = input(messages.SAVE_QUESTION)
+        except KeyboardInterrupt:
+            sys.exit()
+
+        if not ans or ans not in ['y', 'n']:
+            print(messages.INVALID_RESPONSE)
+            sys.exit()
+
+        self.run('save' if ans == 'y' else '', tuple(''))
+        print(messages.END_MESSAGE)
+        sys.exit()
