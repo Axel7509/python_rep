@@ -31,8 +31,8 @@ class User:
     def list_data(self) -> NoReturn:
         print(f"[{', '.join(self.container.list())}]")
 
-    def find_key(self, key: str) -> NoReturn:
-        print(self.container.find(key))
+    def find_key(self, key: tuple[str]) -> NoReturn:
+        print(self.container.find(*key))
 
     def grep_keys(self, regex: tuple[str | bytes | Pattern[bytes]]) -> NoReturn:
         print(self.container.grep(*regex))
@@ -44,11 +44,7 @@ class User:
         self.container.load(self.username)
 
     def switch(self, new_username: tuple[str]) -> NoReturn:
-        ans: str = input(messages.LOAD_QUESTION.format(new_username[0]))
 
-        if ans == 'y':
-            self._container.load(new_username[0], switch=True)
-        elif ans != 'n':
-            print(messages.INVALID_RESPONSE)
+        self._container.load(new_username[0], switch=True)
 
         self.username = new_username[0]

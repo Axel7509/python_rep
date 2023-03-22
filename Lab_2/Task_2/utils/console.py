@@ -2,6 +2,11 @@ from utils.user import User
 from utils import messages
 import sys
 from typing import NoReturn
+from collections.abc import (
+    KeysView,
+    Callable
+)
+import inspect
 
 
 class Console:
@@ -42,11 +47,23 @@ class Console:
         except IndexError:
             return '', tuple('')
 
-    def run(self, command, args):
-        if command not in self.commands:
-            print(messages.INVALID_COMMAND_MESSAGE)
-        else:
-            self.commands[command](args) if args else self.commands[command]()
+    def run(self, comm: str, args: tuple[str]) -> NoReturn:
+
+        if not comm:
+            return
+
+        if comm not in self.commands:
+            print(messages.INVALID_COMMAND_MESSAGE.format(comm))
+            return
+
+        func: Callable = self.commands[comm] if comm else lambda x: None
+        func_params: KeysView[str] = inspect.signature(func).parameters.keys()
+
+        if len(func_params) != len(args) and comm != "add":
+            print(messages.INVALID_ARG_MESSAGE.format(", ".join(args)))
+            return
+
+        func(args) if args else func()
 
     def start_session(self) -> NoReturn:
         print(messages.WELCOME_MESSAGE)
@@ -63,6 +80,10 @@ class Console:
         try:
             ans = input(messages.SAVE_QUESTION)
         except KeyboardInterrupt:
+            sys.exit()
+
+        if ans == 'n':
+            print(messages.END_MESSAGE)
             sys.exit()
 
         if not ans or ans not in ['y', 'n']:
