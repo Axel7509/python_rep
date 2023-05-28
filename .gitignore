@@ -9,4 +9,5 @@ Lab_2/.idea/
 .idea/
 /venv/
 venv/
+/__pycache__/
 
