@@ -1,6 +1,14 @@
 import re
 from abc import ABC, abstractmethod
-from types import NoneType, FunctionType, LambdaType, MethodType, CodeType, CellType
+from types import (
+    NoneType,
+    FunctionType,
+    LambdaType,
+    MethodType,
+    CodeType,
+    CellType,
+    ModuleType
+)
 from typing import Any, IO, Hashable
 
 
@@ -16,7 +24,7 @@ class Serializer(ABC):
                 return num_type(s)
             except (ValueError, TypeError):
                 pass
-            
+
     @staticmethod
     def _get_key(value: Hashable, obj: dict):
         return [key for key in obj if obj[key] == value][0]
@@ -51,6 +59,10 @@ class Serializer(ABC):
             return MethodType
         elif obj_type == 'type':
             return type
+        elif obj_type == 'module':
+            return ModuleType
+        elif obj_type == 'object':
+            return object
 
     def dump(self, obj: Any, fp: IO[str]) -> None:
         """Dumps an object to .json file.

@@ -3,7 +3,7 @@ import unittest
 from types import NoneType
 
 from utils.serialize import JSONSerializer
-from config import DATA_DIR
+from tests import DATA_DIR
 
 
 class JSONBasicTypesCase(unittest.TestCase):
