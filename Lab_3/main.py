@@ -1,4 +1,4 @@
-from utils.serialize import JSONSerializer
+from utils.serialize import JSONSerializer, XMLSerializer
 
 
 def main():
@@ -20,6 +20,15 @@ def main():
     }
     print(json_ser.loads(json_ser.dumps((a))))
     print(a == json_ser.loads(json_ser.dumps(a)))
+
+    xml_ser = XMLSerializer()
+    print(type(xml_ser.loads(xml_ser.dumps(True))))
+    print(type(xml_ser.loads(xml_ser.dumps("None"))))
+    print(type(xml_ser.loads(xml_ser.dumps(None))))
+    print(type(xml_ser.loads(xml_ser.dumps("14"))))
+    print(type(xml_ser.loads(xml_ser.dumps(14))))
+    print(type(xml_ser.loads(xml_ser.dumps("14+9j"))))
+    print(type(xml_ser.loads(xml_ser.dumps(14 + 9j))))
 
 
 if __name__ == '__main__':
