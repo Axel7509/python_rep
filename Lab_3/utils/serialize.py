@@ -1,14 +1,14 @@
 import re
 from abc import ABC, abstractmethod
-from types import NoneType, FunctionType, CodeType
-from typing import Callable, Any, IO
+from types import FunctionType, CodeType, NoneType, LambdaType, MethodType
+from typing import Callable, Any, IO, Hashable, Iterable
 
-from templates.json_template import FUNCTION_TEMPLATE
+from templates.json_template import ITERABLE, CALLABLE
 
 
 class Serializer(ABC):
-    _BASE_TYPES = [int, float, complex, bytes, str, NoneType, bool]
-    _KEYWORDS = {'None': None, 'True': True, 'False': False}
+    _NUMERICS = [int, float, complex]
+    _KEYWORDS = {None: 'null', True: 'true', False: 'false'}
 
     def __init__(self):
         pass
@@ -63,55 +63,99 @@ class JSONSerializer(Serializer):
         super().__init__()
 
     @staticmethod
-    def _parse_template(template: str) -> dict[str, str]:
-        return dict(re.findall(r'(\w+):\s?([^,{]*)', template)[1:])
+    def _template_to_dict(template: str) -> dict[str, str]:
+        return dict(re.findall(r'"(\w+)":\s?"([^,{]*)"', template))
+
+    @staticmethod
+    def _get_key(value: Hashable, data: dict):
+        return [key for key in data if data[key] == value][0]
 
     @classmethod
-    def _apply_base_types(cls, s: str) -> Any:
-        if s in cls._KEYWORDS:
-            return cls._KEYWORDS[s]
-
-        for base_type in cls._BASE_TYPES:
+    def _numeric(cls, s: str) -> Any:
+        for num_type in cls._NUMERICS:
             try:
-                return base_type(s)
+                return num_type(s)
             except (ValueError, TypeError):
                 pass
 
-        return None
+    @staticmethod
+    def _get_obj_type(s: str) -> type:
+        obj_type = re.search(r"<class '(\w\S+)'>_", s)
+
+        if not obj_type:
+            return NoneType
+
+        if obj_type.group(1) == 'list':
+            return list
+        elif obj_type.group(1) == 'tuple':
+            return tuple
+        elif obj_type.group(1) == 'set':
+            return set
+        elif obj_type.group(1) == 'dict':
+            return dict
+        elif obj_type.group(1) == 'function':
+            return FunctionType
+        elif obj_type.group(1) == 'lambda':
+            return LambdaType
+        elif obj_type.group(1) == 'method':
+            return MethodType
 
     @classmethod
-    def _typify(cls, data: dict[str, str]) -> dict[str, Any]:
-        mid_data = {
-            key: cls._apply_base_types(value)
-            for key, value in data.items()
-        }
+    def _typify_list(cls, lst: list[str]):
+        temp_lst = lst.copy()
 
-        for key, value in data.items():
-            if " " in value:
-                mid_data[key] = tuple(map(
-                    lambda x: cls._apply_base_types(x),
-                    value.split()
-                ))
-            if key == "names" or key == "varnames":
-                mid_data[key] = tuple(value)
+        for index, item in enumerate(temp_lst):
+            if cls._numeric(item) is not None:
+                temp_lst[index] = cls._numeric(item)
+
+            elif item in cls._KEYWORDS.values():
+                temp_lst[index] = cls._get_key(item, cls._KEYWORDS)
+
+        return temp_lst
+
+    @classmethod
+    def _typify_dict(cls, data: dict[str, str]) -> dict[str, Any]:
+        temp_data: dict[str, Any] = data.copy()
+
+        for key, value in temp_data.items():
+            if cls._numeric(value) is not None:
+                temp_data[key] = cls._numeric(value)
+
+            if value in cls._KEYWORDS.values():
+                temp_data[key] = cls._get_key(value, cls._KEYWORDS)
+
             if key == "codestring" or key == "lnotab":
-                mid_data[key] = value.encode()
+                temp_data[key] = value.encode()
 
-        return mid_data
+            if key in ("items", "consts", "names", "varnames"):
+                temp_data[key] = tuple(cls._typify_list(value.split()))
+
+        return temp_data
 
     def dump(self, obj: Any, fp: IO[str]):
-        if type(obj) in self._BASE_TYPES:
-            if type(obj) == str:
-                fp.write(f'"{obj}"')
-            else:
-                fp.write(str(obj))
+        fp.write(self.dumps(obj))
 
     def dumps(self, obj: Any) -> str:
-        if type(obj) in self._BASE_TYPES:
-            return f"{repr(obj)}"
+        if obj in self._KEYWORDS:
+            return self._KEYWORDS[obj]
+
+        if isinstance(obj, Iterable):
+            return ITERABLE.format(
+                type=type(obj),
+                id=id(obj),
+                items=' '.join(map(str, obj))
+            )
+
+        if type(obj) == str:
+            return f'"{obj}"'
+
+        if type(obj) in self._NUMERICS:
+            return str(obj)
 
         if isinstance(obj, FunctionType):
-            return FUNCTION_TEMPLATE.format(
+            return CALLABLE.format(
+                type=type(obj),
+                id=id(obj),
                 name=obj.__code__.co_name,
                 argcount=obj.__code__.co_argcount,
                 posonlyargcount=obj.__code__.co_posonlyargcount,
@@ -129,17 +173,28 @@ class JSONSerializer(Serializer):
             )
 
     def load(self, fp: IO[str]):
-        fp_content: str = fp.read()
-        return self.loads(fp_content)
+        return self.loads(fp.read())
 
     def loads(self, s: str) -> Any:
         if not len(s):
             return
 
-        if s.startswith("'") or s.startswith('"'):
-            return s.strip("'\"")
+        if issubclass(self._get_obj_type(s), Iterable):
+            return self._get_obj_type(s)(
+                self._typify_dict(self._template_to_dict(s))["items"]
+            )
 
-        return FunctionType(
-            code=CodeType(*self._typify(self._parse_template(s)).values()),
-            globals=globals()
-        )
+        if s in self._KEYWORDS.values():
+            return self._get_key(s, self._KEYWORDS)
+
+        if s.startswith('"'):
+            return s.strip('"')
+
+        if self._numeric(s) is not None:
+            return self._numeric(s)
+
+        if issubclass(self._get_obj_type(s), FunctionType):
+            return self._get_obj_type(s)(
+                code=CodeType(*self._typify_dict(self._template_to_dict(s)).values()),
+                globals=globals()
+            )
