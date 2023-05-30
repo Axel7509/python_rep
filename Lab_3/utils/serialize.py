@@ -1,60 +1,11 @@
 import re
-from abc import ABC, abstractmethod
-from types import FunctionType, CodeType, NoneType, LambdaType, MethodType
-from typing import Callable, Any, IO, Hashable, Iterable
+from collections.abc import Collection
+from types import FunctionType, CodeType, NoneType, CellType
+from typing import Hashable, Iterable, Iterator
 
-from templates.json_template import ITERABLE, CALLABLE
-
-
-class Serializer(ABC):
-    _NUMERICS = [int, float, complex]
-    _KEYWORDS = {None: 'null', True: 'true', False: 'false'}
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def _apply_base_types(types, s: str) -> Any:
-        results = []
-        for t in types:
-            try:
-                results.append(t(s.strip('()')))
-            except (ValueError, TypeError):
-                results.append(None)
-
-        return tuple(filter(lambda x: x is not None, results))[0]
-
-    @abstractmethod
-    def dump(self, obj: Any, fp: IO[str]) -> None:
-        """Dumps an object to IO stream supporting .write() (e.g. a file).
-        :param obj: object to dump.
-        :param fp: input/output stream to dump object to.
-        """
-        pass
-
-    @abstractmethod
-    def dumps(self, obj):
-        """Dumps an object to a string and returns the string.
-        :param obj: object to dump.
-        :return: string containing serialized (dumped) object.
-        """
-        pass
-
-    @abstractmethod
-    def load(self, fp):
-        """Loads an object from IO stream supporting .read() (e.g. a file).
-        :param fp: json file object to extract object from.
-        :return: deserialized Python object.
-        """
-        pass
-
-    @abstractmethod
-    def loads(self, s):
-        """Loads an object from a string and returns it.
-        :param s: string to extract object from.
-        :return: deserialized Python object.
-        """
-        pass
+from utils.base import Serializer
+from utils.helpers import Formatter
+from utils.templates import JSON
 
 
 class JSONSerializer(Serializer):
@@ -62,139 +13,188 @@ class JSONSerializer(Serializer):
     def __init__(self):
         super().__init__()
 
-    @staticmethod
-    def _template_to_dict(template: str) -> dict[str, str]:
-        return dict(re.findall(r'"(\w+)":\s?"([^,{]*)"', template))
+    def _load_from_dictlike_str(self, template: str) -> dict:
+        """Takes a string of specific format (visit ``utils.templates``
+        for more clarity) as an input, loads object data,
+        and returns it in the form of dict.
+        :param template: string template to retrieve object from.
+        :return: dictionary with object data.
+        """
+        obj: dict = {}
+        lines: list[str] = template.split("\n")
+        it: Iterator[str] = enumerate(lines)
+        for i, l in it:
+            if not re.search(r'\s*(.+):\s*([^,]*)', l):
+                continue
+            key, value = re.search(r'\s*(.+):\s*([^,]*)', l).groups()
+            if value != "{":
+                obj[self.loads(key)] = self.loads(value)
 
-    @staticmethod
-    def _get_key(value: Hashable, data: dict):
-        return [key for key in data if data[key] == value][0]
+            elif value == "{" and "class" not in key:
+                brackets = 1
+                start = i + 1
 
-    @classmethod
-    def _numeric(cls, s: str) -> Any:
-        for num_type in cls._NUMERICS:
-            try:
-                return num_type(s)
-            except (ValueError, TypeError):
-                pass
+                while brackets and i < len(lines) - 1:
+                    i += 1
+                    brackets += ("{" in lines[i]) - ("}" in lines[i])
 
-    @staticmethod
-    def _get_obj_type(s: str) -> type:
-        obj_type = re.search(r"<class '(\w\S+)'>_", s)
+                obj[self.loads(key)] = self.loads('\n'.join(lines[start:i]))
+                [next(it, None) for _ in range(i + 1 - start)]
 
-        if not obj_type:
-            return NoneType
+        return obj
 
-        if obj_type.group(1) == 'list':
-            return list
-        elif obj_type.group(1) == 'tuple':
-            return tuple
-        elif obj_type.group(1) == 'set':
-            return set
-        elif obj_type.group(1) == 'dict':
-            return dict
-        elif obj_type.group(1) == 'function':
-            return FunctionType
-        elif obj_type.group(1) == 'lambda':
-            return LambdaType
-        elif obj_type.group(1) == 'method':
-            return MethodType
-
-    @classmethod
-    def _typify_list(cls, lst: list[str]):
-        temp_lst = lst.copy()
-
-        for index, item in enumerate(temp_lst):
-            if cls._numeric(item) is not None:
-                temp_lst[index] = cls._numeric(item)
-
-            elif item in cls._KEYWORDS.values():
-                temp_lst[index] = cls._get_key(item, cls._KEYWORDS)
-
-        return temp_lst
-
-    @classmethod
-    def _typify_dict(cls, data: dict[str, str]) -> dict[str, Any]:
-        temp_data: dict[str, Any] = data.copy()
-
-        for key, value in temp_data.items():
-            if cls._numeric(value) is not None:
-                temp_data[key] = cls._numeric(value)
-
-            if value in cls._KEYWORDS.values():
-                temp_data[key] = cls._get_key(value, cls._KEYWORDS)
-
-            if key == "codestring" or key == "lnotab":
-                temp_data[key] = value.encode()
-
-            if key in ("items", "consts", "names", "varnames"):
-                temp_data[key] = tuple(cls._typify_list(value.split()))
-
-        return temp_data
-
-    def dump(self, obj: Any, fp: IO[str]):
-        fp.write(self.dumps(obj))
-
-    def dumps(self, obj: Any) -> str:
-        if obj in self._KEYWORDS:
-            return self._KEYWORDS[obj]
-
-        if isinstance(obj, Iterable):
-            return ITERABLE.format(
-                type=type(obj),
-                id=id(obj),
-                items=' '.join(map(str, obj))
-            )
-
+    def dumps(self, obj) -> str:
+        """Dumps an object to a string and returns the string.
+        Dumping is done via general JSON object template. It can
+        overcomplicate simple structure serialization, but can be
+        applied to much larger scale of python objects.
+        :param obj: object to dump.
+        :return: string containing serialized (dumped) object.
+        """
         if type(obj) == str:
             return f'"{obj}"'
-
-        if type(obj) in self._NUMERICS:
+        if type(obj) == type(Ellipsis):
+            return ' '
+        elif type(obj) in self._NUMERICS:
             return str(obj)
-
-        if isinstance(obj, FunctionType):
-            return CALLABLE.format(
+        elif isinstance(obj, Hashable) and type(obj) in [bool, NoneType]:
+            return self._KEYWORDS[obj]
+        if isinstance(obj, dict):
+            return JSON.format(
                 type=type(obj),
                 id=id(obj),
-                name=obj.__code__.co_name,
-                argcount=obj.__code__.co_argcount,
-                posonlyargcount=obj.__code__.co_posonlyargcount,
-                kwonlyargcount=obj.__code__.co_kwonlyargcount,
-                nlocals=obj.__code__.co_nlocals,
-                stacksize=obj.__code__.co_stacksize,
-                flags=obj.__code__.co_flags,
-                code=obj.__code__.co_code.decode('unicode-escape'),
-                consts=' '.join(map(str, obj.__code__.co_consts)),
-                names=' '.join(obj.__code__.co_names),
-                varnames=' '.join(obj.__code__.co_varnames),
-                filename=obj.__code__.co_filename,
-                firstlineno=obj.__code__.co_firstlineno,
-                lnotab=obj.__code__.co_lnotab.decode('unicode-escape'),
+                items=Formatter().to_json(obj, self.dumps),
+            )
+        elif isinstance(obj, Collection):
+            return JSON.format(
+                type=type(obj),
+                id=id(obj),
+                items=Formatter().to_json(dict(zip(range(len(obj)), obj)), self.dumps)
+            )
+        elif isinstance(obj, CodeType):
+            return JSON.format(
+                type=type(obj),
+                id=id(obj),
+                items=Formatter().to_json({
+                    "argcount": obj.co_argcount,
+                    "posonlyargcount": obj.co_posonlyargcount,
+                    "kwonlyargcount": obj.co_kwonlyargcount,
+                    "nlocals": obj.co_nlocals,
+                    "stacksize": obj.co_stacksize,
+                    "flags": obj.co_flags,
+                    "code": obj.co_code,
+                    "consts": obj.co_consts,
+                    "names": obj.co_names,
+                    "varnames": obj.co_varnames,
+                    "filename": obj.co_filename,
+                    "name": obj.co_name,
+                    "firstlineno": obj.co_firstlineno,
+                    "lnotab": obj.co_lnotab,
+                    "freevars": obj.co_freevars,
+                    "cellvars": obj.co_cellvars,
+                }, self.dumps)
+            )
+        elif isinstance(obj, FunctionType):
+            if "__class__" in obj.__code__.co_freevars and obj.__closure__:
+                closure = ([... for _ in obj.__closure__])
+            else:
+                closure = obj.__closure__
+
+            return JSON.format(
+                type=type(obj),
+                id=id(obj),
+                items=Formatter().to_json({
+                    "argcount": obj.__code__.co_argcount,
+                    "posonlyargcount": obj.__code__.co_posonlyargcount,
+                    "kwonlyargcount": obj.__code__.co_kwonlyargcount,
+                    "nlocals": obj.__code__.co_nlocals,
+                    "stacksize": obj.__code__.co_stacksize,
+                    "flags": obj.__code__.co_flags,
+                    "code": obj.__code__.co_code,
+                    "consts": obj.__code__.co_consts,
+                    "names": obj.__code__.co_names,
+                    "varnames": obj.__code__.co_varnames,
+                    "filename": obj.__code__.co_filename,
+                    "name": obj.__code__.co_name,
+                    "firstlineno": obj.__code__.co_firstlineno,
+                    "lnotab": obj.__code__.co_lnotab,
+                    "freevars": obj.__code__.co_freevars,
+                    "cellvars": obj.__code__.co_cellvars,
+                    "globals": {
+                        k: obj.__globals__[k]
+                        for k in set(obj.__globals__) & set(obj.__code__.co_names)
+                    },
+                    "closure": closure,
+                    "qualname": obj.__qualname__
+                }, self.dumps),
+            )
+        elif isinstance(obj, type):
+            return JSON.format(
+                type=type(obj),
+                id=id(obj),
+                items=Formatter().to_json({
+                    'name': obj.__name__,
+                    'mro': tuple(obj.mro()[1:-1]),
+                    'attrs': {
+                        k: v for k, v in obj.__dict__.items()
+                        if k not in self._NOT_SERIALIZABLE
+                    }
+                }, self.dumps)
             )
 
-    def load(self, fp: IO[str]):
-        return self.loads(fp.read())
-
-    def loads(self, s: str) -> Any:
+    # noinspection PyArgumentList,PyUnresolvedReferences
+    def loads(self, s: str):
+        """Loads an object from a string and returns it.
+        Operates using JSON template from ``utils.templates``.
+        However, primitive types are serialized without this
+        template.
+        :param s: string to extract object from.
+        :return: deserialized Python object.
+        """
         if not len(s):
             return
 
-        if issubclass(self._get_obj_type(s), Iterable):
-            return self._get_obj_type(s)(
-                self._typify_dict(self._template_to_dict(s))["items"]
-            )
-
-        if s in self._KEYWORDS.values():
-            return self._get_key(s, self._KEYWORDS)
-
+        if s == ' ':
+            return ...
         if s.startswith('"'):
             return s.strip('"')
+        elif s in self._KEYWORDS.values():
+            return self._get_key(s, self._KEYWORDS)
+        elif self._to_number(s) is not None:
+            return self._to_number(s)
+        obj_type = self._obj_type_from_template(s, r"<class '(\w\S+)'>_")
+        obj_data = self._load_from_dictlike_str(s)
+        if issubclass(obj_type, dict):
+            return obj_data
+        elif issubclass(obj_type, Iterable):
+            return obj_type(obj_data.values())
+        elif issubclass(obj_type, CodeType):
+            return CodeType(*list(obj_data.values()))
+        elif issubclass(obj_type, FunctionType):
+            if obj_data['closure']:
+                closure = tuple([CellType(x) for x in obj_data['closure']])
+            elif obj_data['closure'] and '__class__' in obj_data['freevars']:
+                closure = tuple([CellType(...) for _ in obj_data['closure']])
+            else:
+                closure = tuple()
 
-        if self._numeric(s) is not None:
-            return self._numeric(s)
-
-        if issubclass(self._get_obj_type(s), FunctionType):
-            return self._get_obj_type(s)(
-                code=CodeType(*self._typify_dict(self._template_to_dict(s)).values()),
-                globals=globals()
+            obj = FunctionType(
+                code=CodeType(*list(obj_data.values())[:16]),
+                globals={
+                    **obj_data['globals'],
+                    '__builtins__': __builtins__,
+                },
+                name=obj_data['name'],
+                closure=closure
             )
+            obj.__qualname__ = obj_data['qualname']
+
+            return obj
+        elif isinstance(obj_type, type):
+            obj = type(obj_data['name'], obj_data['mro'], obj_data['attrs'])
+            try:
+                obj.__init__.__closure__[0].cell_contents = obj
+            except (AttributeError, IndexError):
+                ...
+
+            return obj

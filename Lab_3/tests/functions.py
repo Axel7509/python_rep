@@ -29,10 +29,8 @@ class LambdasCase(unittest.TestCase):
 
     def test_basic_lambdas(self):
         self.assertEqual(
-            self.json_ser.loads(
-                self.json_ser.dumps(lambda x: x**2 / 2)
-            )(10),
-            (lambda x: x**2 / 2)(10))
+            self.json_ser.loads(self.json_ser.dumps(lambda x: x**2 / 2))(10),
+            (lambda x: x ** 2 / 2)(10))
         self.assertEqual(
             self.json_ser.loads(
                 self.json_ser.dumps(lambda x, y, z: (x + y - z) ** 2 / 2)
