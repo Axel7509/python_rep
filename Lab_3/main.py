@@ -1,4 +1,4 @@
-from utils.serialization import JSONSerializer
+from utils.serialize import JSONSerializer
 
 
 def aboba(a: int = 1, b: int = 2) -> int:
@@ -14,6 +14,7 @@ def main():
     print("_"*20)
     print(dir(ahuha.__code__) == dir(aboba.__code__))
     print(aboba.__code__.co_code == ahuha.__code__.co_code)
+    print(aboba.__code__)
     print(aboba.__code__.co_code)
     print(ahuha.__code__.co_code)
 

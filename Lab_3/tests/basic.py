@@ -2,7 +2,7 @@ import os.path
 import unittest
 from types import NoneType
 
-from utils.serialization import JSONSerializer
+from utils.serialize import JSONSerializer
 from config import DATA_DIR
 
 
