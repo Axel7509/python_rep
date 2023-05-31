@@ -1,4 +1,4 @@
-from utils.serialize import JSONSerializer, XMLSerializer
+from argo.serialize import JSONSerializer, XMLSerializer
 
 
 def main():

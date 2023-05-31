@@ -1,11 +1,13 @@
 from .constants import PRIMITIVE_TYPES
-from .templates import XML_ITEM
+from argo.utils.templates import XML_ITEM
 
 
 class Formatter:
+
     @staticmethod
     def move_line(string, indent):
         """
+
         :param string:
         :param indent:
         :return:
@@ -14,6 +16,7 @@ class Formatter:
 
     def to_json(self, obj, dumps):
         """
+
         :param obj:
         :param dumps:
         :return:
@@ -26,6 +29,7 @@ class Formatter:
                 continue
 
             items_repr += f"\t{dumps(k)}: {{\n"
+
             for line in dumps(v).split("\n")[1:]:
                 items_repr += f"{self.move_line(line, 1)}\n"
 

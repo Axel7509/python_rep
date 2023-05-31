@@ -1,5 +1,6 @@
 import unittest
-from utils.serialize import JSONSerializer
+
+from argo.serialize import JSONSerializer
 
 
 class TestClass1:
@@ -18,11 +19,11 @@ class TestClass1:
 
     @staticmethod
     def test_static_1(a):
-        return type(a)
+        return a * 3
 
 
 class TestClass2(TestClass1):
-    SOME_PROP_2 = 'ahuha, aboba, amuga'
+    SOME_PROP_2 = 'ahuha2 aboba@ amuga'
 
     def __init__(self, bb):
         super().__init__(bb * 2)
@@ -43,8 +44,8 @@ class WithoutInheritanceCase(unittest.TestCase):
             TestClass1(12).test_bound_1()
         )
         self.assertEqual(
-            self.json_ser.loads(self.json_ser.dumps(TestClass1))().test_static_1(2),
-            TestClass1(12).test_static_1(2)
+            self.json_ser.loads(self.json_ser.dumps(TestClass1)).test_static_1(2),
+            TestClass1.test_static_1(2)
         )
 
     def test_single_class_inheritance(self):
@@ -55,6 +56,12 @@ class WithoutInheritanceCase(unittest.TestCase):
         self.assertEqual(
             self.json_ser.loads(self.json_ser.dumps(TestClass2))(12).test_bound_1(),
             TestClass2(12).test_bound_1()
+        )
+        self.assertEqual(
+            self.json_ser.loads(
+                self.json_ser.dumps(TestClass2)
+            ).test_class_2(self.json_ser.loads(self.json_ser.dumps(TestClass2))),
+            TestClass2.test_class_2()
         )
 
 
