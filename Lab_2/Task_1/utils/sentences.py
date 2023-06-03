@@ -10,12 +10,10 @@ def is_sentence(sentence: str) -> bool:
 
 
 def count_sentences(text: str) -> int:
-
     return len(re.findall(r'(?<=\w)+([?!.])+(?= |$)', text))
 
 
 def count_non_declarative(text: str) -> int:
-
     all_sent = re.findall(r'(?<=\w)+([?!.])+(?= |$)', text)
     decl_sent = re.findall(r'(?<=\w)+([.])+(?= |$)', text)
 

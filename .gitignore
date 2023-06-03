@@ -7,3 +7,7 @@ Lab_2/Task_1/utils/__pycache__/
 __pycache__/	
 Lab_2/.idea/
 .idea/
+/venv/
+venv/
+/__pycache__/
+
