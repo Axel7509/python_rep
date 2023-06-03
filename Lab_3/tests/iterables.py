@@ -1,6 +1,6 @@
 import unittest
 
-from argo.serialize import JSONSerializer, XMLSerializer
+from argon_88_sk.serialize import JSONSerializer, XMLSerializer
 
 
 class JSONDataStructuresCase(unittest.TestCase):

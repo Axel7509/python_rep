@@ -4,8 +4,8 @@ from types import NoneType, EllipsisType
 from typing import Iterator
 
 from .base import Serializer
-from argo.utils.templates import JSON, XML, XML_PRIMITIVE
-from argo.utils.constants import PRIMITIVE_TYPES, TYPE_MAPPING
+from argon_88_sk.utils.templates import JSON, XML, XML_PRIMITIVE
+from argon_88_sk.utils.constants import PRIMITIVE_TYPES, TYPE_MAPPING
 
 
 class JSONSerializer(Serializer):
@@ -80,7 +80,7 @@ class JSONSerializer(Serializer):
             return self._KEYWORDS[obj]
 
         return JSON.format(
-            type=type(obj),
+            type=type(obj) if type(obj) in TYPE_MAPPING.values() else object,
             id=id(obj),
             items=self.formatter.to_json(self.get_items(obj), self.dumps)
         )
@@ -157,7 +157,7 @@ class XMLSerializer(Serializer):
             return f'<primitive type="{obj_type}">{obj}</primitive>'
 
         return XML.format(
-            type=self._get_key(type(obj), TYPE_MAPPING),
+            type=self._get_key(type(obj), TYPE_MAPPING) if type(obj) in TYPE_MAPPING.values() else "object",
             id=id(obj),
             items=self.formatter.to_xml(self.get_items(obj), self.dumps)
         )

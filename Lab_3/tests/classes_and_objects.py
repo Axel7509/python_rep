@@ -1,6 +1,6 @@
 import unittest
 
-from argo.serialize import JSONSerializer
+from argon_88_sk.serialize import JSONSerializer
 
 
 class TestClass1:

@@ -1,5 +1,5 @@
 from .constants import PRIMITIVE_TYPES
-from argo.utils.templates import XML_ITEM
+from argon_88_sk.utils.templates import XML_ITEM
 
 
 class Formatter:

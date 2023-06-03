@@ -1,6 +1,6 @@
 from types import (
     NoneType, FunctionType, LambdaType,
-    MethodType, CodeType, CellType, ModuleType, EllipsisType
+    MethodType, CodeType, CellType, ModuleType, EllipsisType, GeneratorType
 )
 
 PRIMITIVE_TYPES: tuple = (int, float, complex, str, bool, NoneType, EllipsisType)
@@ -27,4 +27,6 @@ TYPE_MAPPING = {
     'type': type,
     'module': ModuleType,
     'object': object,
+    'property': property,
+    "generator": GeneratorType
 }

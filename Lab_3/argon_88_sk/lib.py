@@ -1,11 +1,11 @@
 import argparse
 
-from argo.base import Serializer
-from argo.serialize import JSONSerializer, XMLSerializer
+from argon_88_sk.base import Serializer
+from argon_88_sk.serialize import JSONSerializer, XMLSerializer
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="argo")
+    parser = argparse.ArgumentParser(prog="argon_88_sk")
     parser.add_argument('file_from')
     parser.add_argument('file_to')
     parser.add_argument('format_from')
@@ -32,4 +32,13 @@ def main():
 
 
 if __name__ == '__main__':
+    filename = "/home/artem/Desktop/file1.json"
+
+    with open(filename, 'w+') as fp:
+        JSONSerializer().dump({
+            1: "123",
+            None: [True, False, "sdf", -11],
+            90: 1,
+        }, fp)
+
     main()

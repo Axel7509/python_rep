@@ -2,11 +2,11 @@ import re
 from abc import ABC, abstractmethod
 from types import NoneType, FunctionType, MethodType, CodeType, ModuleType,\
     CellType, BuiltinMethodType, BuiltinFunctionType, WrapperDescriptorType, \
-    MethodDescriptorType, MappingProxyType, GetSetDescriptorType, MemberDescriptorType
+    MethodDescriptorType, MappingProxyType, GetSetDescriptorType, MemberDescriptorType, GeneratorType
 from typing import Any, IO, Hashable, Collection, Iterable
 
-from argo.utils.constants import TYPE_MAPPING
-from argo.utils.helpers import Formatter
+from argon_88_sk.utils.constants import TYPE_MAPPING
+from argon_88_sk.utils.helpers import Formatter
 
 
 class Serializer(ABC):
@@ -68,6 +68,21 @@ class Serializer(ABC):
                 "lnotab": obj.co_lnotab,
                 "freevars": obj.co_freevars,
                 "cellvars": obj.co_cellvars,
+            }
+
+        elif isinstance(obj, property):
+            return {
+                "getter": obj.fget,
+                "setter": obj.fset,
+                "deleter": obj.fdel
+            }
+
+        elif isinstance(obj, GeneratorType):
+            a = []
+            for i in obj:
+                a.append(i)
+            return{
+                "values":a
             }
 
         elif isinstance(obj, FunctionType):
@@ -156,6 +171,9 @@ class Serializer(ABC):
         if issubclass(obj_type, dict):
             return obj_data
 
+        elif issubclass(obj_type, GeneratorType):
+            return (x for x in obj_data["values"])
+
         elif issubclass(obj_type, Iterable):
             return obj_type(obj_data.values())
 
@@ -180,6 +198,9 @@ class Serializer(ABC):
             obj.__globals__[obj.__name__] = obj
 
             return obj
+
+        elif issubclass(obj_type, property):
+            return property(fget=obj_data.get("getter"), fdel=obj_data.get("deleter"), fset=obj_data.get("setter"))
 
         elif issubclass(obj_type, MethodType):
             return MethodType(

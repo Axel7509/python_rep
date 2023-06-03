@@ -1,7 +1,7 @@
 import os.path
 import unittest
 
-from argo.serialize import JSONSerializer, XMLSerializer
+from argon_88_sk.serialize import JSONSerializer, XMLSerializer
 from tests import DATA_DIR
 
 
